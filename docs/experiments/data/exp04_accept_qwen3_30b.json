@@ -1,0 +1,20 @@
+{
+  "experiment": "0.4 draft acceptance rate",
+  "target": "models/qwen3-30b-a3b-3bit",
+  "draft": "models/qwen3-0.6b-4bit",
+  "num_draft_tokens": 4,
+  "mean_accepted_run_by_domain": {
+    "prose": 2.3256704980842913,
+    "code": 2.4784313725490197,
+    "math": 2.8865546218487395,
+    "chat": 2.46218487394958
+  },
+  "draft_token_fraction_by_domain": {
+    "prose": 0.5927734375,
+    "code": 0.6171875,
+    "math": 0.6708984375,
+    "chat": 0.572265625
+  },
+  "overall_k": 2.5382103416079076,
+  "gate": "live"
+}
