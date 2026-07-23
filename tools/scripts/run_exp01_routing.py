@@ -13,6 +13,7 @@ import argparse
 import json
 from pathlib import Path
 
+import mlx.core as mx
 import numpy as np
 import matplotlib
 
@@ -45,10 +46,11 @@ def main():
     ap.add_argument("--model", required=True)
     ap.add_argument("--tag", required=True)
     ap.add_argument("--pilot", action="store_true")
+    ap.add_argument("--max-tokens", type=int, default=2048)
     args = ap.parse_args()
 
     prompts = PROMPTS[:2] if args.pilot else PROMPTS
-    max_tokens = 256 if args.pilot else 2048
+    max_tokens = 256 if args.pilot else args.max_tokens
 
     model, tokenizer = load(str(ROOT / args.model))
     store: list = []
@@ -61,7 +63,8 @@ def main():
         messages = [{"role": "user", "content": p}]
         prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
         generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
-        print(f"  generation {i + 1}/{len(prompts)} done ({len(store)} records)")
+        mx.clear_cache()  # release KV/cache buffers between generations
+        print(f"  generation {i + 1}/{len(prompts)} done ({len(store)} records)", flush=True)
 
     traces = [to_trace_array(seg) for seg in split_on_boundaries(store)]
     k = traces[0].shape[2]
