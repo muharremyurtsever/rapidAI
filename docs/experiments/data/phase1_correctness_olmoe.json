@@ -1,0 +1,14 @@
+{
+  "experiment": "phase1 correctness gate",
+  "model": "olmoe-1b-7b-4bit",
+  "match": true,
+  "bytes_read": 28529786880,
+  "cache": {
+    "hits": 2797,
+    "misses": 24185,
+    "evictions": 23730,
+    "resident_bytes": 536739840
+  },
+  "reference": "\n\nThe sky appears blue because sunlight is scattered in all directions after entering the Earth's atmosphere, and shorter wavelengths of light such as blue are scattered more due to being scattered by air molecules, dust, and water vapor. This scattering effect is known as Rayleigh scattering. The sunlight reaching our eyes is a mixture of",
+  "streamed": "\n\nThe sky appears blue because sunlight is scattered in all directions after entering the Earth's atmosphere, and shorter wavelengths of light such as blue are scattered more due to being scattered by air molecules, dust, and water vapor. This scattering effect is known as Rayleigh scattering. The sunlight reaching our eyes is a mixture of"
+}

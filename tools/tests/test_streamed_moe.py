@@ -3,7 +3,11 @@ import numpy as np
 from safetensors.numpy import save_file
 
 from rapidai_tools.slru import SLRUCache
-from rapidai_tools.streamed_moe import DiskExpertStore, StreamedQuantizedSwitchLinear
+from rapidai_tools.streamed_moe import (
+    DiskExpertStore,
+    ReaderPool,
+    StreamedQuantizedSwitchLinear,
+)
 
 GROUP = 32
 BITS = 4
@@ -24,7 +28,7 @@ def _mk_quantized_bank(tmp_path):
 
 def test_fetch_returns_expert_rows_and_caches(tmp_path):
     p, t = _mk_quantized_bank(tmp_path)
-    store = DiskExpertStore(str(p), "layer", SLRUCache(10**6))
+    store = DiskExpertStore(ReaderPool(str(tmp_path)), "layer", SLRUCache(10**6))
     w, s, b = store.fetch(2)
     np.testing.assert_array_equal(np.array(w), t["layer.weight"][2])
     store.fetch(2)
@@ -37,9 +41,27 @@ def test_fetch_returns_expert_rows_and_caches(tmp_path):
     assert store.bytes_read == expected
 
 
+def test_per_expert_layout(tmp_path):
+    rng = np.random.default_rng(2)
+    tensors = {}
+    per_expert = {}
+    for e in range(E):
+        w = rng.integers(0, 2**32, size=(OUT, PACKED), dtype=np.uint32)
+        tensors[f"experts.{e}.up.weight"] = w
+        tensors[f"experts.{e}.up.scales"] = rng.normal(size=(OUT, 1)).astype(np.float16)
+        tensors[f"experts.{e}.up.biases"] = rng.normal(size=(OUT, 1)).astype(np.float16)
+        per_expert[e] = w
+    save_file(tensors, str(tmp_path / "pe.safetensors"))
+    store = DiskExpertStore(
+        ReaderPool(str(tmp_path)), "experts.{e}.up", SLRUCache(10**6),
+        layout="per_expert")
+    w, s, b = store.fetch(3)
+    np.testing.assert_array_equal(np.array(w), per_expert[3])
+
+
 def test_streamed_matches_full_gather_qmm(tmp_path):
     p, t = _mk_quantized_bank(tmp_path)
-    store = DiskExpertStore(str(p), "layer", SLRUCache(10**6))
+    store = DiskExpertStore(ReaderPool(str(tmp_path)), "layer", SLRUCache(10**6))
     layer = StreamedQuantizedSwitchLinear(store, group_size=GROUP, bits=BITS)
 
     x = mx.array(np.random.default_rng(1).normal(size=(1, 1, 1, IN)).astype(np.float16))

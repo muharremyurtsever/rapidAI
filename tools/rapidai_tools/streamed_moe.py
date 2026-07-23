@@ -17,19 +17,47 @@ from .slru import SLRUCache
 from .st_reader import STReader
 
 
-class DiskExpertStore:
-    """Per-tensor-prefix expert fetcher: reads {prefix}.{weight,scales,biases} rows."""
+class ReaderPool:
+    """Shared open-file STReader pool + tensor-name -> reader catalog."""
 
-    def __init__(self, st_path: str, prefix: str, cache: SLRUCache,
+    def __init__(self, model_dir: str):
+        import glob
+        import os as _os
+
+        self.by_name: dict = {}
+        for f in sorted(glob.glob(_os.path.join(model_dir, "*.safetensors"))):
+            r = STReader(f)
+            for n in r.tensors:
+                self.by_name[n] = r
+
+    def __contains__(self, name: str) -> bool:
+        return name in self.by_name
+
+
+class DiskExpertStore:
+    """Expert fetcher supporting both on-disk layouts:
+
+    - "stacked": one tensor per projection, expert = row of axis 0
+      ({prefix}.{part}, e.g. model.layers.3.mlp.switch_mlp.up_proj.weight)
+    - "per_expert": one tensor per expert
+      ({prefix} with '{e}' placeholder, e.g. model.layers.3.mlp.experts.{e}.up_proj.weight)
+    """
+
+    def __init__(self, pool, prefix: str, cache: SLRUCache, layout: str = "stacked",
                  names=("weight", "scales", "biases")):
-        self.reader = STReader(st_path)
+        self.pool = pool
         self.prefix = prefix
-        self.names = [n for n in names if f"{prefix}.{n}" in self.reader.tensors]
+        self.layout = layout
+        probe = [n for n in names]
+        if layout == "stacked":
+            self.names = [n for n in probe if f"{prefix}.{n}" in pool]
+        else:
+            self.names = [n for n in probe if prefix.format(e=0) + f".{n}" in pool]
         self.cache = cache
         self.bytes_read = 0
 
-    def _to_mx(self, name_full: str, arr: np.ndarray) -> mx.array:
-        if self.reader.tensors[name_full].dtype == "BF16":
+    def _to_mx(self, reader: STReader, name_full: str, arr: np.ndarray) -> mx.array:
+        if reader.tensors[name_full].dtype == "BF16":
             return mx.array(arr).view(mx.bfloat16)
         return mx.array(arr)
 
@@ -41,10 +69,16 @@ class DiskExpertStore:
         parts = []
         nbytes = 0
         for n in self.names:
-            full = f"{self.prefix}.{n}"
-            arr = self.reader.read_rows(full, expert)
+            if self.layout == "stacked":
+                full = f"{self.prefix}.{n}"
+                reader = self.pool.by_name[full]
+                arr = reader.read_rows(full, expert)
+            else:
+                full = self.prefix.format(e=expert) + f".{n}"
+                reader = self.pool.by_name[full]
+                arr = reader.read_full(full)
             nbytes += arr.nbytes
-            parts.append(self._to_mx(full, arr))
+            parts.append(self._to_mx(reader, full, arr))
         self.bytes_read += nbytes
         value = tuple(parts)
         self.cache.put(key, value, nbytes)
@@ -94,17 +128,14 @@ class StreamStats:
 
 
 def install_streaming(model, model_dir: str, cache_bytes: int) -> StreamStats:
-    """Swap every MoE block's expert bank for disk-backed streamed versions."""
-    import glob
-    import os
+    """Swap every MoE block's expert bank for disk-backed streamed versions.
 
+    Detects the on-disk layout per projection: stacked switch_mlp tensors
+    (Qwen3 MLX exports) or per-expert tensors (OLMoE MLX exports).
+    """
     cache = SLRUCache(cache_bytes)
     stats = StreamStats(cache=cache)
-    name_to_file: dict = {}
-    for f in sorted(glob.glob(os.path.join(model_dir, "*.safetensors"))):
-        r = STReader(f)
-        for n in r.tensors:
-            name_to_file[n] = f
+    pool = ReaderPool(model_dir)
     for i, layer in enumerate(model.model.layers):
         mlp = getattr(layer, "mlp", None)
         if mlp is None or not hasattr(mlp, "switch_mlp"):
@@ -112,14 +143,17 @@ def install_streaming(model, model_dir: str, cache_bytes: int) -> StreamStats:
         sm = mlp.switch_mlp
         for proj in ("gate_proj", "up_proj", "down_proj"):
             q = getattr(sm, proj)
-            prefix = f"model.layers.{i}.mlp.switch_mlp.{proj}"
-            if f"{prefix}.weight" not in name_to_file:
-                raise KeyError(f"tensor {prefix}.weight not found in safetensors")
-            store = DiskExpertStore(name_to_file[f"{prefix}.weight"], prefix, cache)
+            stacked = f"model.layers.{i}.mlp.switch_mlp.{proj}"
+            per_expert = f"model.layers.{i}.mlp.experts.{{e}}.{proj}"
+            if f"{stacked}.weight" in pool:
+                store = DiskExpertStore(pool, stacked, cache, layout="stacked")
+            elif per_expert.format(e=0) + ".weight" in pool:
+                store = DiskExpertStore(pool, per_expert, cache, layout="per_expert")
+            else:
+                raise KeyError(f"no expert tensors found for layer {i} {proj}")
             streamed = StreamedQuantizedSwitchLinear(
                 store, group_size=q.group_size, bits=q.bits,
                 mode=getattr(q, "mode", "affine"))
-            # drop resident expert tensors, then swap the module
             setattr(sm, proj, streamed)
             stats.stores.append(store)
     mx.clear_cache()

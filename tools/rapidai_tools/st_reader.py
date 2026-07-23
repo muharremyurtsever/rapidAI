@@ -51,6 +51,12 @@ class STReader:
             )
         self.bytes_read = 0
 
+    def read_full(self, name: str) -> np.ndarray:
+        m = self.tensors[name]
+        raw = os.pread(self.fd, m.nbytes, m.start)
+        self.bytes_read += m.nbytes
+        return np.frombuffer(raw, dtype=_DTYPES[m.dtype]).reshape(m.shape)
+
     def read_rows(self, name: str, row: int) -> np.ndarray:
         m = self.tensors[name]
         n_rows = m.shape[0]
