@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: rapidai-tools
+Version: 0.1.0
+Summary: rapidAI Phase 0 experiment tooling
+Requires-Python: >=3.12
