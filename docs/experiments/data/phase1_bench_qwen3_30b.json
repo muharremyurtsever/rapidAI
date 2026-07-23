@@ -1,0 +1,27 @@
+{
+  "experiment": "phase1 bench",
+  "model": "models/qwen3-30b-a3b-3bit",
+  "runs": [
+    {
+      "budget_mb": 2048,
+      "tokens": 256,
+      "tok_s": 1.825,
+      "bytes_read_per_token": 310238208,
+      "decode_cache_hit_rate": 0.6071
+    },
+    {
+      "budget_mb": 4096,
+      "tokens": 256,
+      "tok_s": 1.709,
+      "bytes_read_per_token": 100001664,
+      "decode_cache_hit_rate": 0.8734
+    },
+    {
+      "budget_mb": 6144,
+      "tokens": 256,
+      "tok_s": 2.674,
+      "bytes_read_per_token": 33237120,
+      "decode_cache_hit_rate": 0.9579
+    }
+  ]
+}
