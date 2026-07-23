@@ -1,6 +1,6 @@
-# Large artifacts — never committed
-models/
-data/
+# Large artifacts — never committed (root-level only; docs/experiments/data IS committed)
+/models/
+/data/
 *.gguf
 *.safetensors
 *.rapd
