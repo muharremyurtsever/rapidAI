@@ -1,0 +1,24 @@
+# Large artifacts — never committed
+models/
+data/
+*.gguf
+*.safetensors
+*.rapd
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# C++ / CMake
+build/
+cmake-build-*/
+compile_commands.json
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
