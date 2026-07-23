@@ -1,0 +1,28 @@
+{
+  "experiment": "phase1 bench (O(1) SLRU, process-isolated)",
+  "model": "models/qwen3-30b-a3b-3bit",
+  "note": "after SLRU running-counter fix (profiled: old O(n) _resident() sum was 59% of decode time)",
+  "runs": [
+    {
+      "budget_mb": 2048,
+      "tokens": 256,
+      "tok_s": 6.748,
+      "bytes_read_per_token": 310238208,
+      "decode_cache_hit_rate": 0.6071
+    },
+    {
+      "budget_mb": 4096,
+      "tokens": 256,
+      "tok_s": 4.518,
+      "bytes_read_per_token": 100001664,
+      "decode_cache_hit_rate": 0.8734
+    },
+    {
+      "budget_mb": 6144,
+      "tokens": 256,
+      "tok_s": 7.084,
+      "bytes_read_per_token": 33237120,
+      "decode_cache_hit_rate": 0.9579
+    }
+  ]
+}
