@@ -1,0 +1,6 @@
+mlx-lm>=0.24
+safetensors>=0.4
+numpy>=1.26
+matplotlib>=3.8
+huggingface_hub>=0.23
+pytest>=8
