@@ -138,18 +138,26 @@ def install_streaming(model, model_dir: str, cache_bytes: int) -> StreamStats:
     pool = ReaderPool(model_dir)
     for i, layer in enumerate(model.model.layers):
         mlp = getattr(layer, "mlp", None)
-        if mlp is None or not hasattr(mlp, "switch_mlp"):
+        if mlp is None:
             continue
-        sm = mlp.switch_mlp
+        # Qwen3/OLMoE name the expert bank switch_mlp; GPT-OSS names it experts.
+        sm = getattr(mlp, "switch_mlp", None) or getattr(mlp, "experts", None)
+        if sm is None or not hasattr(sm, "gate_proj"):
+            continue
         for proj in ("gate_proj", "up_proj", "down_proj"):
             q = getattr(sm, proj)
-            stacked = f"model.layers.{i}.mlp.switch_mlp.{proj}"
-            per_expert = f"model.layers.{i}.mlp.experts.{{e}}.{proj}"
-            if f"{stacked}.weight" in pool:
-                store = DiskExpertStore(pool, stacked, cache, layout="stacked")
-            elif per_expert.format(e=0) + ".weight" in pool:
-                store = DiskExpertStore(pool, per_expert, cache, layout="per_expert")
-            else:
+            candidates = [
+                (f"model.layers.{i}.mlp.switch_mlp.{proj}", "stacked"),
+                (f"model.layers.{i}.mlp.experts.{proj}", "stacked"),
+                (f"model.layers.{i}.mlp.experts.{{e}}.{proj}", "per_expert"),
+            ]
+            store = None
+            for prefix, layout in candidates:
+                probe = prefix.format(e=0) if layout == "per_expert" else prefix
+                if f"{probe}.weight" in pool:
+                    store = DiskExpertStore(pool, prefix, cache, layout=layout)
+                    break
+            if store is None:
                 raise KeyError(f"no expert tensors found for layer {i} {proj}")
             streamed = StreamedQuantizedSwitchLinear(
                 store, group_size=q.group_size, bits=q.bits,
