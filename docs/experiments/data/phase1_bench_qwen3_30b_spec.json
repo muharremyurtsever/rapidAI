@@ -1,0 +1,36 @@
+{
+  "experiment": "phase1 bench",
+  "model": "models/qwen3-30b-a3b-3bit",
+  "runs": [
+    {
+      "budget_mb": 2048,
+      "tokens": 256,
+      "tok_s": 0.927,
+      "bytes_read_per_token": 690270336,
+      "decode_cache_hit_rate": 0.2581,
+      "draft": "models/qwen3-0.6b-4bit",
+      "num_draft_tokens": 4,
+      "draft_token_fraction": 0.5938
+    },
+    {
+      "budget_mb": 4096,
+      "tokens": 256,
+      "tok_s": 0.73,
+      "bytes_read_per_token": 218047872,
+      "decode_cache_hit_rate": 0.8859,
+      "draft": "models/qwen3-0.6b-4bit",
+      "num_draft_tokens": 4,
+      "draft_token_fraction": 0.0
+    },
+    {
+      "budget_mb": 6144,
+      "tokens": 256,
+      "tok_s": 1.022,
+      "bytes_read_per_token": 76688640,
+      "decode_cache_hit_rate": 0.9599,
+      "draft": "models/qwen3-0.6b-4bit",
+      "num_draft_tokens": 4,
+      "draft_token_fraction": 0.0
+    }
+  ]
+}
