@@ -1,0 +1,41 @@
+{
+  "experiment": "phase1 bench",
+  "model": "models/olmoe-1b-7b-4bit",
+  "runs": [
+    {
+      "budget_mb": 256,
+      "tokens": 256,
+      "tok_s": 6.931,
+      "bytes_read_per_token": 451215360,
+      "decode_cache_hit_rate": 0.0
+    },
+    {
+      "budget_mb": 512,
+      "tokens": 256,
+      "tok_s": 7.111,
+      "bytes_read_per_token": 373372416,
+      "decode_cache_hit_rate": 0.1725
+    },
+    {
+      "budget_mb": 1024,
+      "tokens": 256,
+      "tok_s": 8.955,
+      "bytes_read_per_token": 198904320,
+      "decode_cache_hit_rate": 0.5592
+    },
+    {
+      "budget_mb": 2048,
+      "tokens": 256,
+      "tok_s": 11.784,
+      "bytes_read_per_token": 57770496,
+      "decode_cache_hit_rate": 0.872
+    },
+    {
+      "budget_mb": 3584,
+      "tokens": 256,
+      "tok_s": 20.615,
+      "bytes_read_per_token": 4451328,
+      "decode_cache_hit_rate": 0.9901
+    }
+  ]
+}
