@@ -1,0 +1,38 @@
+{
+  "experiment": "0.3 expert delta spectrum",
+  "model": "models/qwen3-30b-a3b-bf16",
+  "pilot": true,
+  "layers": [
+    0
+  ],
+  "gate_metric": "mean delta energy at rank 25%",
+  "gate_threshold": 0.7,
+  "mean_delta_energy_at_25pct_rank": 0.6910573840141296,
+  "gate": "kill",
+  "per_layer": {
+    "L0": {
+      "gate_proj": {
+        "shape": [
+          128,
+          768,
+          2048
+        ],
+        "full_rank": 768,
+        "delta_energy_by_rank_frac": {
+          "0.01": 0.08468212187290192,
+          "0.05": 0.28032898902893066,
+          "0.1": 0.4290727972984314,
+          "0.25": 0.6910573840141296,
+          "0.5": 0.8870554566383362
+        },
+        "raw_energy_by_rank_frac": {
+          "0.01": 0.08539429306983948,
+          "0.05": 0.2819364666938782,
+          "0.1": 0.43101081252098083,
+          "0.25": 0.6930315494537354,
+          "0.5": 0.8883615732192993
+        }
+      }
+    }
+  }
+}
