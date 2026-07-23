@@ -26,33 +26,48 @@ def main():
     ap.add_argument("--tag", required=True)
     ap.add_argument("--budgets-mb", required=True)
     ap.add_argument("--max-tokens", type=int, default=N_TOKENS)
+    ap.add_argument("--draft", default=None)
+    ap.add_argument("--num-draft-tokens", type=int, default=4)
     args = ap.parse_args()
     runs = []
     for mb in [int(x) for x in args.budgets_mb.split(",")]:
         model, tok = load(str(ROOT / args.model))
         stats = install_streaming(model, str(ROOT / args.model), cache_bytes=mb << 20)
+        draft_model = load(str(ROOT / args.draft))[0] if args.draft else None
+        gen_kwargs = {}
+        if draft_model is not None:
+            gen_kwargs = {"draft_model": draft_model,
+                          "num_draft_tokens": args.num_draft_tokens}
         # measure decode only: exclude prefill by starting the clock at first token
         n = 0
+        from_draft = 0
         t0 = None
         b0 = h0 = m0 = None
-        for r in stream_generate(model, tok, prompt=PROMPT, max_tokens=args.max_tokens):
+        for r in stream_generate(model, tok, prompt=PROMPT,
+                                 max_tokens=args.max_tokens, **gen_kwargs):
             if t0 is None:
                 t0 = time.perf_counter()
                 b0 = stats.bytes_read
                 h0, m0 = stats.cache.hits, stats.cache.misses
             n += 1
+            from_draft += bool(getattr(r, "from_draft", False))
         dt = time.perf_counter() - t0
         hits = stats.cache.hits - h0
         misses = stats.cache.misses - m0
-        runs.append({
+        run = {
             "budget_mb": mb,
             "tokens": n,
             "tok_s": round(n / dt, 3),
             "bytes_read_per_token": int((stats.bytes_read - b0) / max(n, 1)),
             "decode_cache_hit_rate": round(hits / max(hits + misses, 1), 4),
-        })
+        }
+        if draft_model is not None:
+            run["draft"] = args.draft
+            run["num_draft_tokens"] = args.num_draft_tokens
+            run["draft_token_fraction"] = round(from_draft / max(n, 1), 4)
+        runs.append(run)
         print(json.dumps(runs[-1]), flush=True)
-        del model
+        del model, draft_model
         mx.clear_cache()
     out = {"experiment": "phase1 bench", "model": args.model, "runs": runs}
     (ROOT / f"docs/experiments/data/phase1_bench_{args.tag}.json").write_text(
