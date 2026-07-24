@@ -31,8 +31,11 @@ def main():
     args = ap.parse_args()
     runs = []
     for mb in [int(x) for x in args.budgets_mb.split(",")]:
-        model, tok = load(str(ROOT / args.model))
+        # lazy=True: expert tensors stay unmaterialized; install_streaming drops
+        # them before mx.eval, so only the dense/shared tier becomes resident.
+        model, tok = load(str(ROOT / args.model), lazy=True)
         stats = install_streaming(model, str(ROOT / args.model), cache_bytes=mb << 20)
+        mx.eval(model.parameters())
         draft_model = load(str(ROOT / args.draft))[0] if args.draft else None
         gen_kwargs = {}
         if draft_model is not None:

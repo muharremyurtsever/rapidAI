@@ -44,7 +44,9 @@ class DiskExpertStore:
     """
 
     def __init__(self, pool, prefix: str, cache: SLRUCache, layout: str = "stacked",
-                 names=("weight", "scales", "biases")):
+                 names=("weight", "scales", "biases", "bias")):
+        # "weight"/"scales"/"biases" feed gather_qmm; "bias" (GPT-OSS) is the
+        # additive per-expert linear bias applied after the matmul.
         self.pool = pool
         self.prefix = prefix
         self.layout = layout
@@ -53,6 +55,7 @@ class DiskExpertStore:
             self.names = [n for n in probe if f"{prefix}.{n}" in pool]
         else:
             self.names = [n for n in probe if prefix.format(e=0) + f".{n}" in pool]
+        self.has_linear_bias = "bias" in self.names
         self.cache = cache
         self.bytes_read = 0
 
@@ -100,10 +103,11 @@ class StreamedQuantizedSwitchLinear:
         unique, inverse = np.unique(idx_np, return_inverse=True)
         fetched = [self.store.fetch(int(e)) for e in unique]
         bank = [mx.stack([f[i] for f in fetched]) for i in range(len(fetched[0]))]
+        lin_bias = bank.pop() if self.store.has_linear_bias else None
         weight, scales = bank[0], bank[1]
         biases = bank[2] if len(bank) > 2 else None
         compact_idx = mx.array(inverse.reshape(idx_np.shape).astype(np.uint32))
-        return mx.gather_qmm(
+        out = mx.gather_qmm(
             x, weight, scales, biases,
             rhs_indices=compact_idx,
             transpose=True,
@@ -111,6 +115,9 @@ class StreamedQuantizedSwitchLinear:
             bits=self.bits,
             mode=self.mode,
         )
+        if lin_bias is not None:
+            out = out + mx.expand_dims(lin_bias[compact_idx], -2)
+        return out
 
 
 @dataclass
