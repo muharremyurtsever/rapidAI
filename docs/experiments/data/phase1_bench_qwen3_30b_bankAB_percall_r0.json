@@ -1,0 +1,13 @@
+{
+  "experiment": "phase1 bench",
+  "model": "models/qwen3-30b-a3b-3bit",
+  "runs": [
+    {
+      "budget_mb": 6144,
+      "tokens": 256,
+      "tok_s": 5.092,
+      "bytes_read_per_token": 33237120,
+      "decode_cache_hit_rate": 0.9579
+    }
+  ]
+}

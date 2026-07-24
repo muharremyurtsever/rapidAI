@@ -1,0 +1,29 @@
+{
+  "experiment": "phase1b persistent-bank microbench",
+  "model": "qwen3-30b-a3b-3bit",
+  "prefix": "model.layers.0.mlp.switch_mlp.up_proj",
+  "n_calls": 400,
+  "k_unique": 8,
+  "cache_mb": 60,
+  "includes_gather_qmm": true,
+  "hit_rate": {
+    "percall": 0.6819,
+    "persistent": 0.6863
+  },
+  "ms_per_call": {
+    "percall": [
+      0.992,
+      0.572,
+      0.57
+    ],
+    "persistent": [
+      0.679,
+      0.557,
+      0.56
+    ]
+  },
+  "median_ms_per_call": {
+    "percall": 0.572,
+    "persistent": 0.56
+  }
+}
