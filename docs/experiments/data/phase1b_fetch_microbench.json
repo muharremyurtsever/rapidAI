@@ -1,0 +1,36 @@
+{
+  "experiment": "phase1b fetch microbench",
+  "model": "qwen3-30b-a3b-3bit",
+  "prefix": "model.layers.0.mlp.switch_mlp.up_proj",
+  "n_calls": 400,
+  "k_unique": 8,
+  "cache_mb": 60,
+  "ms_per_call": {
+    "old": [
+      0.778,
+      0.563,
+      0.564
+    ],
+    "many": [
+      0.686,
+      0.591,
+      0.588
+    ],
+    "banked": [
+      0.634,
+      0.621,
+      0.644
+    ],
+    "npbank": [
+      0.806,
+      0.806,
+      0.821
+    ]
+  },
+  "median_ms_per_call": {
+    "old": 0.564,
+    "many": 0.591,
+    "banked": 0.634,
+    "npbank": 0.806
+  }
+}

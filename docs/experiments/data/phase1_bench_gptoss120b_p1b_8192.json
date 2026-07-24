@@ -1,0 +1,13 @@
+{
+  "experiment": "phase1 bench",
+  "model": "models/gpt-oss-120b-mxfp4-q4",
+  "runs": [
+    {
+      "budget_mb": 8192,
+      "tokens": 256,
+      "tok_s": 0.907,
+      "bytes_read_per_token": 680024160,
+      "decode_cache_hit_rate": 0.6418
+    }
+  ]
+}
