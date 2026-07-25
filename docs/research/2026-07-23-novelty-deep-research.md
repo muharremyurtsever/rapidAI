@@ -1,6 +1,6 @@
 # Novelty Deep-Research Report — 2026-07-23
 
-Method: structured literature review (5 search angles → 22 primary sources → 109 extracted claims → 25 adversarially verified, 3-vote panels). 24 claims confirmed, 1 refuted.
+Method: structured literature review across 5 search angles → 22 primary sources → 109 candidate claims → 25 verified against their primary sources. 24 confirmed, 1 refuted.
 
 Question: are our four bets for reducing per-token disk I/O in MoE inference on consumer Apple Silicon already done?
 

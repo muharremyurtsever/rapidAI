@@ -84,8 +84,8 @@ If you've got any Apple Silicon Mac: clone this, run the benchmark, and tell me 
 - `tools/scripts/` — experiment runners and microbenchmarks
 - `docs/paper/` — the preprint draft
 - `docs/experiments/` — dated reports + committed measurement JSON
-- `docs/launch/` — announcement drafts and arXiv submission notes
-- `docs/design/specs/` — the design spec and full thesis
+- `docs/research/` — prior-art / novelty literature review
+- `docs/launch/` — announcement drafts and submission notes
 
 ## Reproducing
 
