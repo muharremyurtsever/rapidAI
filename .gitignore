@@ -28,3 +28,9 @@ compile_commands.json
 
 # paper build artifacts
 docs/paper/*.zip
+
+# Local working notes / project docs — NEVER publish
+
+
+
+/docs/design/
