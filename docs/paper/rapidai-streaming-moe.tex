@@ -1,0 +1,141 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
+
+\title{Streaming Mixture-of-Experts Inference on Consumer Apple Silicon:\\
+A Measured Map of What Works and What Doesn't}
+
+\author{Muharrem Yurtsever\thanks{Independent Researcher.
+\href{https://www.linkedin.com/in/muharremyurtsever/}{linkedin.com/in/muharremyurtsever}.
+Code, data, and all negative results: \href{https://github.com/muharremyurtsever/rapidAI}{github.com/muharremyurtsever/rapidAI}.}}
+
+\date{July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Does a large Mixture-of-Experts (MoE) language model have to fit in RAM to run at usable speed on consumer hardware? We built a streaming inference engine for Apple Silicon to find out --- it keeps a model's attention/norm/embedding tier resident and pulls MoE expert weights off the SSD on demand through a segmented-LRU cache --- and we held every design decision to a live/kill gate fixed \emph{before} the experiment ran. The thesis survives at the ``it runs'' level and then hits a wall we can locate precisely. Three positive results: (1) GPT-OSS-120B (117B parameters, 5.1B active, ${\sim}63$ GB on disk) decodes coherently at \textbf{1.04 tok/s on an 18 GB machine} --- a model $3.5\times$ larger than total RAM, running where it otherwise would not load at all; (2) Qwen3-30B-A3B decodes at \textbf{up to 7.08 tok/s with a 6 GB expert cache} (${\sim}3$ GB total weight residency), comfortably usable; (3) we contribute the first multi-token expert-routing predictability measurements on modern decoder MoEs, and the routing overlap does \emph{not} decay across an 8-token horizon. The other half of the paper is the more useful half: five pre-registered \emph{negative} results that pin down the design space. Shared-base $+$ low-rank expert decomposition (D\textsuperscript{2}-MoE-style) does not transfer to fine-grained MoEs; speculative decoding \emph{increases} per-token disk traffic for expert streaming; and three successive engine optimizations --- batched fetch, a persistent expert bank, a native C++/Metal fetch primitive --- each miss their speed gate for the same reason: the bottleneck is a per-layer CPU$\leftrightarrow$GPU round-trip \emph{intrinsic to data-dependent fetch}, not something the engineering can remove. A lightweight expert predictor can't dodge it either --- the signal is real and grows with scale ($+9.66$ points over persistence at 120B, versus roughly zero at 1--3B active), but far too weak (23\% miss coverage) to matter, and disk was never the dominant cost anyway. So the ${\ge}3$ tok/s target is unreachable for streaming MoE inference on this hardware class. We release the engine, every measurement, and every negative so the next person doesn't have to re-derive this map.
+\end{abstract}
+
+\section{Thesis and the four-factor equation}
+
+The received wisdom is simple: the biggest model you can run is capped by your RAM. But that cap comes from \emph{eager} weight loading --- hauling every parameter into memory before the first token --- and a sparse MoE only touches a small slice of its experts per token. So the working hypothesis was that the cap is an artifact of how we load, not a law of physics: \emph{a model doesn't need to be resident in RAM to think --- only the part that's thinking right now does.} The quantity that actually governs feasibility isn't total model size; it's disk-to-memory traffic per generated token, which decomposes as
+
+\begin{equation}
+T_{\text{disk/token}} = \frac{P_{\text{active}} \times M_{\text{miss}} \times B_{\text{bytes/param}}}{k_{\text{accept}}}
+\end{equation}
+
+\noindent where $P_{\text{active}}$ is the parameters touched per token (MoE routing selects a sparse subset); $M_{\text{miss}}$ the fraction of touched parameters not resident in a RAM cache; $B_{\text{bytes/param}}$ the storage density (quantization, entropy coding); and $k_{\text{accept}}$ the tokens produced per full-model invocation (speculative decoding).
+
+Each of these factors has been attacked on its own in prior work --- mostly on NVIDIA/PCIe hardware, in papers that don't cite each other. The question here was whether composing them on Apple Silicon's unified memory clears a usable-speed bar. The short version, and the honest one: it doesn't, for the flagship model. Section~\ref{sec:wall} shows the equation itself was wrong in one term (\S\ref{sec:speculative}), and that the thing which actually dominates isn't in the equation at all --- a per-layer synchronization floor that no amount of orchestration engineering removes.
+
+\section{Method: pre-registered gates}
+
+Every experiment fixed a live/kill threshold \emph{before} running, and a bet that missed its gate was dropped without revision. This discipline is the paper's methodological spine: it is why the negative results are trustworthy rather than post-hoc rationalizations, and it repeatedly saved weeks by killing dead bets in days. All benchmarks are process-isolated (one model load per process --- in-process sweeps corrupt tok/s) and, for code-level A/B claims, interleaved within a session (this rig exhibits up to $1.46\times$ end-to-end tok/s thermal drift across hours, which invalidates cross-session comparison).
+
+\section{Reference-hardware measurements (Phase 0)}
+
+\paragraph{I/O.} On the internal NVMe, cache purged per measurement: raw sequential read 3.1--4.2 GB/s; \textbf{\texttt{pread} into a shared Metal buffer with the GPU consuming concurrently sustains 4.16 GB/s} (full SSD speed); the \texttt{mmap} page-fault path caps at \textbf{1.4--1.9 GB/s regardless of prefetch strategy} (\texttt{madvise(WILLNEED)}, \texttt{fcntl(F\_RDADVISE)}, or 8 threads); 16 KB random reads collapse to 0.13 GB/s. \emph{Finding: on Apple Silicon, bulk weight streaming should use \texttt{pread} into a buffer pool, not \texttt{mmap} faulting --- inverting the llama.cpp-era default --- and expert blocks must be ${\ge}2$ MB contiguous.}
+
+\paragraph{Routing locality.} Instrumenting every MoE gate over 25{,}625 decode tokens on Qwen3-30B-A3B: the expert set of token $t$ overlaps token $t{+}1$'s by \textbf{$7.36\times$ the random baseline} (46\% absolute), and the signal \textbf{plateaus at ${\sim}5.5$--$6\times$ through $t{+}8$} rather than decaying. OLMoE-1B-7B shows the same shape ($3.3\times \to {\sim}2.5\times$). To our knowledge these are the first multi-token-lookahead routing-decay measurements on modern decoder MoEs. Implication: a cache exploiting temporal locality should reach high hit rates (confirmed in \S\ref{sec:engine}).
+
+\paragraph{Draft acceptance.} A Qwen3-0.6B draft against a Qwen3-30B target yields mean accepted run length $k=2.54$ --- healthy, but \S\ref{sec:speculative} shows this does not help expert streaming.
+
+\section{Negative results that shape the design}
+
+\subsection{Shared-base + low-rank expert deltas do not transfer (Bet A, killed)}
+
+D\textsuperscript{2}-MoE (ICML 2025) compresses coarse-expert MoEs (Mixtral-class) as a shared base plus low-rank per-expert deltas. On Qwen3-30B-A3B (128 fine-grained experts), across 15 (layer $\times$ projection) combinations, a rank-25\% SVD of the mean-subtracted deltas captures only \textbf{0.564} of Frobenius energy (gate: ${\ge}0.70$), and delta-energy $\approx$ raw-energy to within 0.003 --- the fine-grained experts share essentially \textbf{no} common base. Streaming a shared base plus deltas buys nothing here. Modern MoE training drives specialization that defeats the decomposition.
+
+\subsection{Speculative decoding hurts expert streaming (Bet E, killed) --- the equation is wrong}
+\label{sec:speculative}
+
+The four-factor equation assumes $k_{\text{accept}}$ divides disk traffic. It does not, for routed experts: verifying $k$ drafted tokens in one pass requires the \textbf{union} of $k$ tokens' expert sets simultaneously (routing overlap is only ${\sim}46\%$, so the union is ${\sim}3$--$4\times$ a single token's set) under one cache. Measured on the streamed 30B at 4 GB: \textbf{$0.48\times$ the tok/s and $1.72\times$ the bytes} of plain decoding, despite 59\% draft acceptance. Corrected model:
+
+\begin{equation}
+T_{\text{disk/token}} = \underbrace{P_{\text{active(routed)}} \times M_{\text{miss}} \times B/\text{param}}_{\text{experts}} \;+\; \underbrace{P_{\text{shared}} \times M_{\text{miss,shared}} \times B / k_{\text{accept}}}_{\text{dense/shared tier}}
+\end{equation}
+
+\noindent $k_{\text{accept}}$ survives only on the small dense/shared tier --- which is resident anyway. \textbf{Bet E is dead for expert streaming.}
+
+\section{The streaming engine and its positive results (Phase 1a)}
+\label{sec:engine}
+
+We replace each MoE block's expert bank with a disk-backed module: on each call it reads the routed experts' quantized rows via \texttt{pread} through a segmented-LRU cache and runs the identical \texttt{gather\_qmm}. Correctness is exact --- streamed OLMoE produces token-identical greedy output to the fully-resident model.
+
+\begin{table}[h]
+\centering
+\caption{Qwen3-30B-A3B (3-bit), 256 decode tokens, process-isolated, O(1) cache.}
+\begin{tabular}{lrrr}
+\toprule
+expert cache & tok/s & bytes/token & hit rate \\
+\midrule
+2 GB & 6.75 & 310 MB & 61\% \\
+4 GB & 4.52 & 100 MB & 87\% \\
+6 GB & \textbf{7.08} & 33 MB & 96\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A 30B model decodes at usable speed with ${\sim}3$ GB of weights resident. Measured $M_{\text{miss}}$ (4--13\% at 33--50\% cache) beats our Phase-0 projection --- the multi-token working set concentrates harder than single-lag overlap implied. (Profiling note: an O($n$) byte-sum in our own cache was 59\% of decode time; O(1) counters gave $1.74\times$. Always keep cache bookkeeping O(1).)
+
+GPT-OSS-120B (MXFP4-Q4), 8 GB cache: \textbf{1.04 tok/s, 64\% hit, 680 MB/token} --- coherent output on a machine with 18 GB of RAM for a 63 GB model. The thesis holds at the ``it runs'' level for the flagship model.
+
+\section{Why usable speed is unreachable here (Phase 1b + Bet B)}
+\label{sec:wall}
+
+At high hit rate the bottleneck is no longer disk. We attacked the per-call overhead three ways, each with a pre-registered speed gate on Qwen3-30B @6 GB:
+
+\begin{table}[h]
+\centering
+\caption{Phase-1b orchestration levers, interleaved-median results.}
+\begin{tabular}{lccc}
+\toprule
+optimization & result & gate & verdict \\
+\midrule
+batched fetch (group disk reads) & $1.05$--$1.43\times$ slower & --- & negative \\
+persistent resident expert bank & $1.124\times$ & ${\ge}1.15\times$ & miss \\
+native C++/Metal lazy-fetch primitive & $1.136\times$ & ${\ge}1.50\times$ & miss \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The native port --- a correct nanobind MLX extension with a per-layer persistent bank, O(1) slot LRU, \texttt{pread} straight into unified-memory slots, and a single-stream Metal signal$\to$listener-fetch$\to$wait primitive (whole token $=$ one lazy graph, zero Python sync) --- isolates the cause: \textbf{data-dependent fetch forces one CPU$\leftrightarrow$GPU round-trip per MoE layer in any language}, because the experts to gather are unknown until routing is computed. The Metal listener round-trip (${\sim}1.5$ ms/call) merely re-labels Python's 0.56 ms sync. The graph-only floor with precomputed slots is 6.3 ms/token (a $12.7\times$ ceiling) but is reachable only by removing the dependency from the critical path.
+
+The one lever that could do so is prediction (Bet B): forecast a future token's experts from the current hidden state and prefetch asynchronously. We measured predictability directly (gate: trained predictor beats a persistence baseline by ${\ge}15$ pp and reaches ${\ge}60\%$ recall@$k$ on 120B):
+
+\begin{table}[h]
+\centering
+\caption{Expert predictability, trained hidden-state probe vs.\ persistence baseline.}
+\begin{tabular}{lcc}
+\toprule
+model (active params) & trained $-$ persistence @ $t{+}1$ & trained miss-coverage \\
+\midrule
+OLMoE (1B) & $-1.1$ pp & ${\sim}0\%$ \\
+Qwen3-30B (3B) & $-1.4$ pp & 15\% \\
+GPT-OSS-120B (5B) & \textbf{$+9.66$ pp} & \textbf{23\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{New finding: routing predictability is scale-dependent} --- absent at 1--3B active, real at 5B. But it fails the gate, and the arithmetic is decisive: disk is only ${\sim}6$--$17\%$ of the 120B's 960 ms/token, so even a \emph{perfect} prefetcher lifts $1.04 \to$ at most ${\sim}1.25$ tok/s. Prediction touches neither the intrinsic per-layer round-trip nor compute. \textbf{The ${\ge}3$ tok/s north-star is not reachable for streaming MoE inference on this hardware.}
+
+\section{Conclusion}
+
+So where does this leave the thesis? Half-vindicated, which is the honest place to leave it. RAM residency is \emph{not} required to run a 117B MoE on an 18 GB laptop --- the model runs, and it produces real text where before it wouldn't even load. But \emph{usable} speed for that flagship model is walled off by a synchronization floor intrinsic to sparse, data-dependent computation. That wall isn't a bug we failed to fix; we went looking for it in native code and found it sitting there in the hardware. What you can actually use today is narrower but genuine: \textbf{30B-class MoEs at 4--7 tok/s, and 120B-class models that run --- slowly, patiently --- on machines that can't hold them.}
+
+The lasting contribution isn't the demo, though. It's the map. Five pre-registered negatives that tell the next person exactly which streaming-MoE tricks carry over to modern fine-grained MoEs (none of shared-base decomposition, speculative amortization, batched fetch, resident banking, or native fetch --- not at usable-speed granularity) and the one that does (temporal-locality caching), plus the new wrinkle that routing predictability grows with model scale. Negative results rarely get written down, which is exactly why everyone keeps re-deriving them. We're releasing the engine, the microbenchmarks, and every dead end so this particular map costs the community nothing to reuse.
+
+\section*{Reproducibility}
+
+All code, the four-factor microbenchmarks, per-experiment reports, and raw measurement JSON are in the repository at \href{https://github.com/muharremyurtsever/rapidAI}{github.com/muharremyurtsever/rapidAI}. Every performance claim traces to a committed benchmark; negative results are committed alongside positives. Reference model set: OLMoE-1B-7B-0125, Qwen3-30B-A3B (3-bit and bf16), Qwen3-0.6B, GPT-OSS-120B-MXFP4-Q4 (all MLX community quantizations). Reference hardware: MacBook M3 Pro, 18 GB unified memory.
+
+\end{document}
