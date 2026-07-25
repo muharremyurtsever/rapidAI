@@ -46,4 +46,3 @@ A cs.LG primary with cs.DC + cs.PF cross-lists is a reasonable spread. If endors
 5. Submit. There's a moderation hold (usually a day or so) before it goes live.
 
 Nothing here is public until you do step 5 — the repo stays private and no announcement goes out until you decide.
-</content>
