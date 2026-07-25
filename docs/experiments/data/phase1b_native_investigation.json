@@ -1,0 +1,24 @@
+{
+  "experiment": "phase1b native-port investigation",
+  "model": "qwen3-30b-a3b-3bit",
+  "prefix": "model.layers.0.mlp.switch_mlp.up_proj",
+  "A_phase_breakdown_ms": {
+    "np_indices": 0.0126,
+    "fetch": 0.0043,
+    "stack": 0.0085,
+    "gather": 0.0047,
+    "eval": 0.63
+  },
+  "B_sync_pattern_ms_per_call": {
+    "eval_per_call": 0.4484,
+    "eval_once": 0.1699
+  },
+  "C_graph_free_floor": {
+    "ms_per_token_144_calls": 6.297,
+    "ms_per_call": 0.0437
+  },
+  "D_mx_compile": {
+    "compilable": false,
+    "error": "ValueError: [eval] Attempting to eval an array during function transformations like compile or vmap is not allowed."
+  }
+}

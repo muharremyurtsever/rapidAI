@@ -22,3 +22,6 @@ compile_commands.json
 # Editors
 .idea/
 .vscode/
+
+# Native extension binaries (rebuild via tools/native)
+*.so
