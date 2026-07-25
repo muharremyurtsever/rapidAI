@@ -2,31 +2,56 @@
 
 > **A model does not need to be resident in RAM to think — only the part that is thinking right now does.**
 
-rapidAI is an open research project attacking the assumption that a language model must fit in RAM to run. The real physical limit is **disk-to-memory bandwidth per generated token**, and that quantity is reducible by mathematics:
+rapidAI is an open research project testing whether large Mixture-of-Experts (MoE) language models must fit in RAM to run on consumer Apple Silicon. It streams MoE expert weights from SSD on demand through a segmented-LRU cache, keeping only the attention/norm/embedding tier resident. Every claim is backed by a committed benchmark, and every research bet was decided by a **pre-registered live/kill gate** — negative results included.
 
+## What we measured
+
+**It runs — the thesis holds at the "it runs" level:**
+
+| Model | Params (total / active) | On disk | Expert cache | Result |
+|---|---|---|---|---|
+| GPT-OSS-120B | 117B / 5.1B | ~63 GB | 8 GB | **1.04 tok/s** on an 18 GB M3 Pro (a 3.5× RAM model, coherent output) |
+| Qwen3-30B-A3B | 30B / 3B | ~13 GB | 6 GB | **7.08 tok/s** (~3 GB total weight residency) |
+
+Streamed output is **token-identical** to the fully-resident model (exact, not approximate).
+
+**But usable speed for the flagship model is blocked by physics, not code.** After the cache absorbs the disk cost, the bottleneck is a per-MoE-layer CPU↔GPU round-trip *intrinsic to data-dependent fetch* — you cannot know which experts to gather until routing is computed. We proved this with a correct native C++/Metal fetch primitive that still could not beat the gate, and showed that expert prediction (the only lever that could remove the round-trip) is real but far too weak. **≥3 tok/s on 120B is not reachable with this approach on this hardware — and we can show you exactly why.**
+
+## The real contribution: a map of what works and what doesn't
+
+Five pre-registered **negative** results, each of which saves the next builder weeks:
+
+- **Shared-base + low-rank expert deltas (D²-MoE-style) do not transfer** to fine-grained MoEs (delta ≈ raw; experts share no common base).
+- **Speculative decoding *increases* per-token disk traffic** for expert streaming (0.48× speed, 1.72× bytes) — it needs the *union* of k tokens' expert sets. The project's guiding equation was corrected as a result.
+- **Batched fetch, persistent expert bank, and a native C++/Metal port** each miss their speed gate — the bottleneck is the intrinsic per-layer round-trip, not language overhead.
+
+Two positive findings new to the literature:
+
+- **Multi-token routing locality does not decay:** expert overlap stays ~5.5–6× the random baseline through an 8-token horizon (first such measurement on modern decoder MoEs).
+- **Routing predictability is scale-dependent:** a hidden-state predictor beats persistence by +9.66 pp at 120B (5B active) but ~0 at 1–3B active.
+
+Full writeup: [`docs/paper/2026-07-rapidai-streaming-moe.md`](docs/paper/2026-07-rapidai-streaming-moe.md).
+Per-phase reports and raw data: [`docs/experiments/`](docs/experiments/).
+
+## Repository layout
+
+- `tools/rapidai_tools/` — the streaming engine (SLRU cache, safetensors `pread` reader, disk-backed MoE layer)
+- `tools/native/` — standalone MLX C++/Metal fetch extension (experiment; not on the default path)
+- `tools/scripts/` — experiment runners and microbenchmarks
+- `docs/paper/` — the preprint draft
+- `docs/experiments/` — dated reports + committed measurement JSON
+- `docs/design/specs/` — the design spec and thesis
+
+## Reproducing
+
+```bash
+uv venv && uv pip install -r tools/requirements.txt
+uv pip install -e tools
+cd tools && ../.venv/bin/python -m pytest tests/ -q     # 32 tests
 ```
-T_disk/token = (P_active × M_miss × B_bytes-per-param) / k_accept
-```
 
-Four independently-published ideas — MoE expert streaming with shared-base low-rank deltas, multi-token expert-routing prediction, entropy-coded weights decoded on-GPU, and speculative decoding as a disk-read amortizer — have never been composed into one system, and none has been built for Apple Silicon unified memory. rapidAI composes all four.
-
-**North star:** GPT-OSS-120B (117B parameters) running at ≥ 3 tokens/s sustained on a stock 18 GB MacBook M3 Pro — a machine whose current ceiling is ~14-32B models.
-
-**Limit demonstration:** a Kimi-K3-scale (2.8T) model executing a forward pass on the same machine, as proof that RAM size no longer defines the boundary.
-
-## Status
-
-Phase 0 — "Proof Week". Four pre-registered experiments with kill/live gates, before any engine code:
-
-1. **Lookahead routing decay** — first measurements of t+2..t+k expert predictability on a modern MoE.
-2. **Apple Silicon I/O reality** — mmap + madvise + Metal zero-copy streaming microbenchmarks.
-3. **Expert delta spectrum** — rank/energy analysis of shared-base decomposition on Qwen3-30B-A3B.
-4. **Draft acceptance rate** — speculative-decoding amortization factor measurement.
-
-Design spec: [`docs/design/specs/2026-07-23-rapidai-streaming-inference-design.md`](docs/design/specs/2026-07-23-rapidai-streaming-inference-design.md)
-
-All results — including negative ones — are committed to `docs/experiments/`.
+Benchmarks need MLX-community model weights under `models/` (gitignored); see `tools/scripts/download_models.py`.
 
 ## License
 
-MIT. Everything here — code, measurements, write-ups — is a gift to whoever wants to build on it.
+MIT. The engine, the measurements, and the negative results are a gift to whoever builds on them.
