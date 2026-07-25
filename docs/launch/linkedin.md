@@ -16,6 +16,6 @@ So this is a negative-leaning result, and that's the whole point. Five honest "t
 
 Everything's open source, MIT, negatives included. If you own any Apple Silicon Mac, I'd genuinely love for you to clone it, run the benchmark, and tell me your numbers — I want to see where this wall sits across hardware that isn't mine.
 
-Repo, paper, and the full map in the comments. Always happy to talk shop.
+Repo, paper, and the full map: https://github.com/muharremyurtsever/rapidAI (details in the comments). Always happy to talk shop.
 
 #MachineLearning #LLM #AppleSilicon #OpenSource #MoE
