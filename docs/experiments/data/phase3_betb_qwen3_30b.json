@@ -1,0 +1,75 @@
+{
+  "experiment": "phase3 bet-b predictability",
+  "model": "models/qwen3-30b-a3b-3bit",
+  "tokens": 3078,
+  "layers": 48,
+  "k": 8,
+  "n_experts": 128,
+  "expert_entry_bytes": 2064384,
+  "budget_mb": 6144,
+  "train_frac": 0.7,
+  "by_lag": {
+    "1": {
+      "persistence_recall_at_k": 0.4432,
+      "persistence_recall_at_2k": 0.5388,
+      "trained_recall_at_k": 0.4295,
+      "trained_recall_at_2k": 0.5799,
+      "delta_pp_at_k": -1.37,
+      "miss_coverage": {
+        "eval_hit_rate": 0.97,
+        "cache_capacity_experts": 3120,
+        "persistence_miss_coverage": 0.0,
+        "trained_miss_coverage": 0.1465,
+        "misses_scored": 10640
+      },
+      "hybrid_recall_at_k": 0.4371
+    },
+    "2": {
+      "persistence_recall_at_k": 0.3593,
+      "persistence_recall_at_2k": 0.4709,
+      "trained_recall_at_k": 0.3583,
+      "trained_recall_at_2k": 0.5052,
+      "delta_pp_at_k": -0.1,
+      "miss_coverage": {
+        "eval_hit_rate": 0.97,
+        "cache_capacity_experts": 3120,
+        "persistence_miss_coverage": 0.0,
+        "trained_miss_coverage": 0.0943,
+        "misses_scored": 10632
+      }
+    },
+    "3": {
+      "persistence_recall_at_k": 0.3417,
+      "persistence_recall_at_2k": 0.455,
+      "trained_recall_at_k": 0.3322,
+      "trained_recall_at_2k": 0.4748,
+      "delta_pp_at_k": -0.94,
+      "miss_coverage": {
+        "eval_hit_rate": 0.97,
+        "cache_capacity_experts": 3120,
+        "persistence_miss_coverage": 0.0,
+        "trained_miss_coverage": 0.0847,
+        "misses_scored": 10632
+      }
+    },
+    "4": {
+      "persistence_recall_at_k": 0.3341,
+      "persistence_recall_at_2k": 0.4447,
+      "trained_recall_at_k": 0.3271,
+      "trained_recall_at_2k": 0.4644,
+      "delta_pp_at_k": -0.7,
+      "miss_coverage": {
+        "eval_hit_rate": 0.97,
+        "cache_capacity_experts": 3120,
+        "persistence_miss_coverage": 0.0,
+        "trained_miss_coverage": 0.078,
+        "misses_scored": 10632
+      }
+    }
+  },
+  "gate": {
+    "delta_pp_ge_15": false,
+    "trained_recall_ge_60": false,
+    "pass": false
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "experiment": "phase3 bet-b predictability",
+  "model": "models/gpt-oss-120b-mxfp4-q4",
+  "tokens": 2406,
+  "layers": 36,
+  "k": 4,
+  "n_experts": 128,
+  "expert_entry_bytes": 13236480,
+  "budget_mb": 8192,
+  "train_frac": 0.7,
+  "by_lag": {
+    "1": {
+      "persistence_recall_at_k": 0.307,
+      "persistence_recall_at_2k": 0.4126,
+      "trained_recall_at_k": 0.4035,
+      "trained_recall_at_2k": 0.5597,
+      "delta_pp_at_k": 9.66,
+      "miss_coverage": {
+        "eval_hit_rate": 0.6582,
+        "cache_capacity_experts": 648,
+        "persistence_miss_coverage": 0.0,
+        "trained_miss_coverage": 0.2328,
+        "misses_scored": 35536
+      },
+      "hybrid_recall_at_k": 0.3949
+    },
+    "2": {
+      "persistence_recall_at_k": 0.258,
+      "persistence_recall_at_2k": 0.3715,
+      "trained_recall_at_k": 0.3011,
+      "trained_recall_at_2k": 0.4432,
+      "delta_pp_at_k": 4.3,
+      "miss_coverage": {
+        "eval_hit_rate": 0.6582,
+        "cache_capacity_experts": 648,
+        "persistence_miss_coverage": 0.0069,
+        "trained_miss_coverage": 0.1367,
+        "misses_scored": 35536
+      }
+    },
+    "3": {
+      "persistence_recall_at_k": 0.2487,
+      "persistence_recall_at_2k": 0.3579,
+      "trained_recall_at_k": 0.2623,
+      "trained_recall_at_2k": 0.3931,
+      "delta_pp_at_k": 1.37,
+      "miss_coverage": {
+        "eval_hit_rate": 0.6585,
+        "cache_capacity_experts": 648,
+        "persistence_miss_coverage": 0.0343,
+        "trained_miss_coverage": 0.1054,
+        "misses_scored": 35459
+      }
+    },
+    "4": {
+      "persistence_recall_at_k": 0.2368,
+      "persistence_recall_at_2k": 0.3349,
+      "trained_recall_at_k": 0.2448,
+      "trained_recall_at_2k": 0.3672,
+      "delta_pp_at_k": 0.8,
+      "miss_coverage": {
+        "eval_hit_rate": 0.6585,
+        "cache_capacity_experts": 648,
+        "persistence_miss_coverage": 0.0429,
+        "trained_miss_coverage": 0.0886,
+        "misses_scored": 35459
+      }
+    }
+  },
+  "gate": {
+    "delta_pp_ge_15": false,
+    "trained_recall_ge_60": false,
+    "pass": false
+  }
+}
