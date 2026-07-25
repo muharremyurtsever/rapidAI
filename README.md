@@ -1,5 +1,8 @@
 # rapidAI
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21551120.svg)](https://doi.org/10.5281/zenodo.21551120)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > **A model doesn't need to live in RAM to think — only the part that's thinking right now does.**
 
 I've got a MacBook M3 Pro with 18 GB of RAM, and for months I kept hitting the same wall. The models I actually wanted to run wouldn't fit. Not "run slowly" — just wouldn't load at all. So I started poking at a stubborn question: does a language model really have to be resident in RAM to run, or is that just how everyone happens to do it?
@@ -97,10 +100,25 @@ Benchmarks need MLX-community model weights under `models/` (gitignored); see `t
 ## Author
 
 Muharrem Yurtsever — full-stack developer. This is a personal research project.
-LinkedIn: [muharremyurtsever](https://www.linkedin.com/in/muharremyurtsever/)
+LinkedIn: [muharremyurtsever](https://www.linkedin.com/in/muharremyurtsever/) · ORCID: [0009-0007-1234-7844](https://orcid.org/0009-0007-1234-7844)
+
+## Citation
+
+Preprint (Zenodo, CC BY 4.0): [https://doi.org/10.5281/zenodo.21551120](https://doi.org/10.5281/zenodo.21551120)
+
+```bibtex
+@misc{yurtsever2026rapidai,
+  title        = {Streaming Mixture-of-Experts Inference on Consumer Apple Silicon:
+                  A Measured Map of What Works and What Doesn't},
+  author       = {Yurtsever, Muharrem},
+  year         = {2026},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.21551120},
+  url          = {https://doi.org/10.5281/zenodo.21551120}
+}
+```
 
 ## License
 
 MIT. The engine, the measurements, and especially the negative results are a gift to whoever builds on them.
-</content>
-</invoke>
+

@@ -1,7 +1,7 @@
 # Streaming Mixture-of-Experts Inference on Consumer Apple Silicon: A Measured Map of What Works and What Doesn't
 
-**Draft preprint — not yet submitted. 2026-07-25.**
-Muharrem Yurtsever ([LinkedIn](https://www.linkedin.com/in/muharremyurtsever/)). Reference hardware: MacBook M3 Pro, 18 GB unified memory.
+**Preprint, 2026-07-25.** DOI: [10.5281/zenodo.21551120](https://doi.org/10.5281/zenodo.21551120) (Zenodo, CC BY 4.0).
+Muharrem Yurtsever ([LinkedIn](https://www.linkedin.com/in/muharremyurtsever/), [ORCID 0009-0007-1234-7844](https://orcid.org/0009-0007-1234-7844)). Reference hardware: MacBook M3 Pro, 18 GB unified memory.
 
 ---
 

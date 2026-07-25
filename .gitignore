@@ -25,3 +25,6 @@ compile_commands.json
 
 # Native extension binaries (rebuild via tools/native)
 *.so
+
+# paper build artifacts
+docs/paper/*.zip

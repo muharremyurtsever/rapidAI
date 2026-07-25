@@ -19,3 +19,5 @@ Everything's open source, MIT, negatives included. If you own any Apple Silicon 
 Repo, paper, and the full map: https://github.com/muharremyurtsever/rapidAI (details in the comments). Always happy to talk shop.
 
 #MachineLearning #LLM #AppleSilicon #OpenSource #MoE
+
+Preprint: https://doi.org/10.5281/zenodo.21551120

@@ -17,3 +17,5 @@ The real deliverable is the map: five pre-registered negative results (speculati
 MIT, everything committed including the failures. If you've got any Apple Silicon Mac, I'd love a benchmark report — I want to see where this wall sits on hardware that isn't mine.
 
 Repo: https://github.com/muharremyurtsever/rapidAI  ·  Paper: https://github.com/muharremyurtsever/rapidAI/blob/main/docs/paper/2026-07-rapidai-streaming-moe.md
+
+Preprint: https://doi.org/10.5281/zenodo.21551120
