@@ -19,4 +19,3 @@ Everything's open source, MIT, negatives included. If you own any Apple Silicon 
 Repo, paper, and the full map in the comments. Always happy to talk shop.
 
 #MachineLearning #LLM #AppleSilicon #OpenSource #MoE
-</content>

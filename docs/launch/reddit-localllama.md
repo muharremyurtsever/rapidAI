@@ -30,4 +30,3 @@ Posting this here because this sub actually reads the numbers and hates hype, wh
 Everything's committed, negatives included, MIT. If you run it on your own Apple Silicon, please drop a benchmark report (chip + RAM, model, cache size, tok/s, hit rate) — I've got exactly one hardware data point and I want to see where the wall actually sits.
 
 Repo + paper: [link]
-</content>
